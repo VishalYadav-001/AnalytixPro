@@ -1,15 +1,5 @@
-"""
-views.py
-Production-level DRF ViewSets for the AI Data Analysis Platform.
-
-Design principles:
-  - Every ViewSet scopes querysets to request.user — no cross-user data leaks
-  - Custom actions use explicit serializers and clear HTTP semantics
-  - Pagination, filtering, ordering wired in via get_queryset / filter_backends
-  - Heavy operations (analysis, export) are offloaded to service functions
-    imported from services.py (stubs provided — implement business logic there)
-  - Consistent error responses via DRF's exception handler
-"""
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import EmailTokenObtainPairSerializer
 
 import logging
 from django.contrib.auth.models import User
@@ -50,11 +40,6 @@ from .services.services import (
 
 logger = logging.getLogger(__name__)
 
-
-# ══════════════════════════════════════════════════════════════
-#  THROTTLES
-# ══════════════════════════════════════════════════════════════
-
 class ChatRateThrottle(UserRateThrottle):
     scope = "chat"          # configure in settings: REST_FRAMEWORK.DEFAULT_THROTTLE_RATES
 
@@ -65,11 +50,6 @@ class UploadRateThrottle(UserRateThrottle):
 
 class AnalysisRateThrottle(UserRateThrottle):
     scope = "analysis"
-
-
-# ══════════════════════════════════════════════════════════════
-#  AUTH
-# ══════════════════════════════════════════════════════════════
 
 class RegisterViewSet(viewsets.GenericViewSet):
     """POST /api/auth/register/"""
@@ -88,11 +68,6 @@ class RegisterViewSet(viewsets.GenericViewSet):
 
 
 class UserViewSet(viewsets.GenericViewSet):
-    """
-    /api/auth/me/         GET  → profile
-                          PATCH → update profile
-    /api/auth/me/change_password/  POST
-    """
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
 
@@ -121,20 +96,8 @@ class UserViewSet(viewsets.GenericViewSet):
         return Response({"detail": "Password updated successfully."})
 
 
-# ══════════════════════════════════════════════════════════════
-#  DATASET
-# ══════════════════════════════════════════════════════════════
-
 class DatasetViewSet(viewsets.ModelViewSet):
-    """
-    list   GET    /api/datasets/
-    create POST   /api/datasets/          (multipart upload)
-    retrieve GET  /api/datasets/{id}/
-    destroy DELETE /api/datasets/{id}/
 
-    custom:
-      POST /api/datasets/{id}/run_analysis/  → triggers EDA/ML
-    """
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     throttle_classes = [UserRateThrottle]
@@ -208,17 +171,32 @@ class DatasetViewSet(viewsets.ModelViewSet):
         serializer = TriggerAnalysisSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        chat_session_id = data.get("chat_session_id")
+
+        if chat_session_id:
+            existing = Analysis.objects.filter(
+                chat_session_id=chat_session_id
+            ).first()
+            if existing:
+                return Response(
+                    AnalysisDetailSerializer(existing, context={"request": request}).data,
+                    status=status.HTTP_200_OK,
+                )
 
         try:
             analysis = run_eda_analysis(
                 dataset=dataset,
                 analysis_type=data["analysis_type"],
-                chat_session_id=data.get("chat_session_id"),
+                chat_session_id=chat_session_id,
             )
         except Exception as exc:
             logger.exception("Analysis failed for dataset %s", dataset.id)
+
             return Response(
-                {"detail": "Analysis failed. Please try again.", "error": str(exc)},
+                {
+                    "detail": "Analysis failed. Please try again.", 
+                    "error": f"{exc}" 
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -228,19 +206,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
         )
 
 
-
-
 class ChatSessionViewSet(viewsets.ModelViewSet):
-    """
-    list     GET    /api/chat-sessions/
-    create   POST   /api/chat-sessions/
-    retrieve GET    /api/chat-sessions/{id}/
-    destroy  DELETE /api/chat-sessions/{id}/
-
-    custom:
-      POST /api/chat-sessions/{id}/send-message/
-      GET  /api/chat-sessions/{id}/messages/
-    """
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserRateThrottle]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -291,7 +257,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         user_content = serializer.validated_data["content"]
 
-        # Persist user message
         user_msg = ChatMessage.objects.create(
             session=session, role="user", content=user_content
         )
@@ -305,7 +270,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        # Persist assistant reply
         assistant_msg = ChatMessage.objects.create(
             session=updated_session, role="assistant", content=assistant_content
         )
@@ -334,13 +298,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
 
 
 class AnalysisViewSet(viewsets.ModelViewSet):
-    """
-    list     GET  /api/analyses/
-    retrieve GET  /api/analyses/{id}/
-
-    Analysis objects are created via DatasetViewSet.run_analysis action.
-    They are read-only from this endpoint.
-    """
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["analysis_type", "dataset"]
@@ -358,17 +315,7 @@ class AnalysisViewSet(viewsets.ModelViewSet):
 
 
 class DashboardViewSet(viewsets.ModelViewSet):
-    """
-    list     GET    /api/dashboards/
-    create   POST   /api/dashboards/
-    retrieve GET    /api/dashboards/{id}/
-    destroy  DELETE /api/dashboards/{id}/
 
-    custom:
-      POST /api/dashboards/{id}/export/
-      GET  /api/dashboards/{id}/exports/
-      POST /api/dashboards/generate/   → auto-create from analysis
-    """
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["level", "dataset"]
@@ -390,7 +337,6 @@ class DashboardViewSet(viewsets.ModelViewSet):
             return DashboardDetailSerializer
         return DashboardListSerializer
 
-    # Prevent full replace — dashboards are append-only
     def update(self, request, *args, **kwargs):
         return Response(
             {"detail": "Dashboards cannot be updated. Delete and re-generate."},
@@ -481,12 +427,7 @@ class DashboardViewSet(viewsets.ModelViewSet):
 
 
 class ExportedReportViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    list     GET  /api/exports/
-    retrieve GET  /api/exports/{id}/
 
-    Reports are created via DashboardViewSet.export action.
-    """
     permission_classes = [IsAuthenticated]
     serializer_class = ExportedReportSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -500,3 +441,6 @@ class ExportedReportViewSet(viewsets.ReadOnlyModelViewSet):
             .select_related("dashboard")
             .order_by("-created_at")
         )
+    
+class EmailTokenObtainPairView(TokenObtainPairView):
+    serializer_class = EmailTokenObtainPairSerializer

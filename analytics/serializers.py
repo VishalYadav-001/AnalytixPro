@@ -8,6 +8,9 @@ Conventions:
   - Nested serializers used only for safe read operations
 """
 
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -24,7 +27,7 @@ from .models import (
 )
 
 ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
-MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024 
 
 
 
@@ -225,14 +228,24 @@ class ChatSessionUpdateSerializer(serializers.ModelSerializer):
 
 class AnalysisListSerializer(serializers.ModelSerializer):
     dataset_name = serializers.CharField(source="dataset.name", read_only=True)
+    cleaned_file_url = serializers.SerializerMethodField()
+    dashboard_id = serializers.IntegerField(source="dashboard.id", read_only=True)
+    dashboard_title = serializers.CharField(source="dashboard.title", read_only=True)
 
     class Meta:
         model = Analysis
         fields = [
             "id", "dataset", "dataset_name", "analysis_type",
-            "created_at", "updated_at",
+            "created_at", "updated_at", "cleaned_file_url",
+            "dashboard_id", "dashboard_title",
         ]
         read_only_fields = fields
+
+    def get_cleaned_file_url(self, obj):
+        request = self.context.get("request")
+        if obj.cleaned_file and request:
+            return request.build_absolute_uri(obj.cleaned_file.url)
+        return None
 
 
 class AnalysisDetailSerializer(serializers.ModelSerializer):
@@ -332,3 +345,30 @@ class ExportedReportSerializer(serializers.ModelSerializer):
 class TriggerExportSerializer(serializers.Serializer):
     """Payload for POST /dashboards/{id}/export/."""
     format = serializers.ChoiceField(choices=["pdf", "ipynb", "py"])
+
+
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = 'username'
+
+    def validate(self, attrs):
+        login = attrs.get("username")  # accepts username or email
+        password = attrs.get("password")
+
+        user = authenticate(username=login, password=password)
+        if not user:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                u = User.objects.get(email=login)
+                user = authenticate(username=u.username, password=password)
+            except User.DoesNotExist:
+                pass
+
+        if not user:
+            raise serializers.ValidationError("Invalid email or password")
+
+        data = super().validate({
+            "username": user.username,
+            "password": password
+        })
+        return data

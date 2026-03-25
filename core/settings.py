@@ -9,6 +9,8 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
+from datetime import timedelta
+
 from decouple import config
 
 from pathlib import Path
@@ -26,7 +28,7 @@ SECRET_KEY = 'django-insecure-p^fi6-)i+932xz0o3x$sqr+p+9!%o4#jdi#d^mc7=8n&%w3=q(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -53,6 +55,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -114,10 +119,29 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon':     '60/minute',
+        'user':     '300/minute',
+        'upload':   '20/minute',   
+        'chat':     '60/minute',  
+        'analysis': '10/minute',  
+    },
 }
-
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME":  timedelta(minutes=60),  
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS":  True,               
+    "BLACKLIST_AFTER_ROTATION": False,              
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+ 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
+
 
 LANGUAGE_CODE = 'en-us'
 

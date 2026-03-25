@@ -71,9 +71,9 @@ from .views import (
     AnalysisViewSet,
     DashboardViewSet,
     ExportedReportViewSet,
+    EmailTokenObtainPairView,
 )
 
-# ── Router ────────────────────────────────────────────────────
 router = DefaultRouter(trailing_slash=True)
 router.register(r"datasets",      DatasetViewSet,       basename="dataset")
 router.register(r"chat-sessions", ChatSessionViewSet,   basename="chat-session")
@@ -81,19 +81,15 @@ router.register(r"analyses",      AnalysisViewSet,      basename="analysis")
 router.register(r"dashboards",    DashboardViewSet,     basename="dashboard")
 router.register(r"exports",       ExportedReportViewSet, basename="export")
 
-# ── Auth patterns (non-router) ────────────────────────────────
 auth_urlpatterns = [
-    # Registration
     path(
         "register/",
         RegisterViewSet.as_view({"post": "create"}),
         name="auth-register",
     ),
-    # JWT
-    path("login/",         TokenObtainPairView.as_view(), name="auth-login"),
+    path("login/", EmailTokenObtainPairView.as_view(), name="auth-login"),
     path("token/refresh/", TokenRefreshView.as_view(),    name="auth-token-refresh"),
     path("token/verify/",  TokenVerifyView.as_view(),     name="auth-token-verify"),
-    # Current user
     path(
         "me/",
         UserViewSet.as_view({"get": "me", "patch": "me"}),
@@ -106,7 +102,6 @@ auth_urlpatterns = [
     ),
 ]
 
-# ── Final urlpatterns ─────────────────────────────────────────
 urlpatterns = [
     path("auth/", include((auth_urlpatterns, "auth"))),
     path("",       include(router.urls)),
