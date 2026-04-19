@@ -31,17 +31,17 @@ from .serializers import (
     ExportedReportSerializer, TriggerExportSerializer,
 )
 from .services.services import (
-    parse_uploaded_file,       # extracts rows/cols/column_names from CSV/Excel
-    run_eda_analysis,          # runs pandas EDA, returns Analysis instance
-    generate_dashboard_config, # builds layout_config JSON for Dashboard
-    export_dashboard_report,   # generates PDF/ipynb/py file, returns ExportedReport
-    handle_chat_turn,          # processes user message, returns assistant reply + updated session
+    parse_uploaded_file,
+    run_eda_analysis,
+    generate_dashboard_config,
+    export_dashboard_report,
+    handle_chat_turn,
 )
 
 logger = logging.getLogger(__name__)
 
 class ChatRateThrottle(UserRateThrottle):
-    scope = "chat"          # configure in settings: REST_FRAMEWORK.DEFAULT_THROTTLE_RATES
+    scope = "chat"
 
 
 class UploadRateThrottle(UserRateThrottle):
@@ -127,7 +127,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         dataset = serializer.save()
 
-        # Parse file metadata in the same request (fast op — just read headers)
         try:
             parse_uploaded_file(dataset)
         except Exception as exc:
@@ -142,7 +141,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
             headers=headers,
         )
 
-    # Prevent PATCH/PUT — datasets are immutable after upload
     def update(self, request, *args, **kwargs):
         return Response(
             {"detail": "Dataset files cannot be modified. Upload a new dataset."},
@@ -231,7 +229,7 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         return ChatSessionListSerializer
 
     def update(self, request, *args, **kwargs):
-        kwargs["partial"] = True  # always partial update for sessions
+        kwargs["partial"] = True 
         return super().update(request, *args, **kwargs)
 
     @action(
@@ -241,10 +239,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         throttle_classes=[ChatRateThrottle],
     )
     def send_message(self, request, pk=None):
-        """
-        Accept a user message, persist it, call the AI service,
-        persist the assistant reply, and return both.
-        """
         session = self.get_object()
 
         if session.is_complete:
@@ -287,7 +281,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="messages")
     def messages(self, request, pk=None):
-        """Return paginated message history for a session."""
         session = self.get_object()
         msgs = session.messages.order_by("created_at")
         page = self.paginate_queryset(msgs)
@@ -315,7 +308,6 @@ class AnalysisViewSet(viewsets.ModelViewSet):
 
 
 class DashboardViewSet(viewsets.ModelViewSet):
-
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["level", "dataset"]
@@ -348,7 +340,6 @@ class DashboardViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="generate")
     def generate(self, request):
-        """Auto-generate a dashboard config from an existing Analysis."""
         analysis_id = request.data.get("analysis_id")
         if not analysis_id:
             return Response(
@@ -385,9 +376,7 @@ class DashboardViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="export",
             throttle_classes=[AnalysisRateThrottle])
     def export(self, request, pk=None):
-        """Export a dashboard as PDF / Jupyter Notebook / Python script."""
         dashboard = self.get_object()
-
         serializer = TriggerExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         fmt = serializer.validated_data["format"]
@@ -412,7 +401,6 @@ class DashboardViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="exports")
     def exports(self, request, pk=None):
-        """List all exports for a dashboard."""
         dashboard = self.get_object()
         reports = dashboard.exports.filter(user=request.user).order_by("-created_at")
         page = self.paginate_queryset(reports)
@@ -427,7 +415,6 @@ class DashboardViewSet(viewsets.ModelViewSet):
 
 
 class ExportedReportViewSet(viewsets.ReadOnlyModelViewSet):
-
     permission_classes = [IsAuthenticated]
     serializer_class = ExportedReportSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]

@@ -1,14 +1,3 @@
-"""
-serializers.py
-Production-level DRF serializers for the AI Data Analysis Platform.
-
-Conventions:
-  - Read serializers  → flat, optimised for list/retrieve responses
-  - Write serializers → validate input, enforce ownership, call services
-  - Nested serializers used only for safe read operations
-"""
-
-
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -39,7 +28,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Returned after login / register and in /me endpoint."""
     profile = UserProfileSerializer(read_only=True)
 
     class Meta:
@@ -98,8 +86,6 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class DatasetListSerializer(serializers.ModelSerializer):
-    """Lightweight representation for list views."""
-
     class Meta:
         model = Dataset
         fields = [
@@ -110,8 +96,6 @@ class DatasetListSerializer(serializers.ModelSerializer):
 
 
 class DatasetUploadSerializer(serializers.ModelSerializer):
-    """Handles file upload + basic validation."""
-
     class Meta:
         model = Dataset
         fields = ["id", "name", "file", "status", "file_type",
@@ -139,7 +123,6 @@ class DatasetUploadSerializer(serializers.ModelSerializer):
 
 
 class DatasetDetailSerializer(serializers.ModelSerializer):
-    """Full representation for retrieve views."""
     owner = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:
@@ -160,13 +143,12 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 
 class SendMessageSerializer(serializers.Serializer):
-    """Payload for POST /chat-sessions/{id}/send_message/."""
     content = serializers.CharField(required=True, max_length=4096)
 
 
 class ChatSessionListSerializer(serializers.ModelSerializer):
     dataset_name = serializers.CharField(source="dataset.name", read_only=True, default=None)
-    message_count = serializers.IntegerField(read_only=True)  # annotated in queryset
+    message_count = serializers.IntegerField(read_only=True) 
 
     class Meta:
         model = ChatSession
@@ -216,7 +198,6 @@ class ChatSessionCreateSerializer(serializers.ModelSerializer):
 
 
 class ChatSessionUpdateSerializer(serializers.ModelSerializer):
-    """Allows updating context fields gathered during the chat flow."""
 
     class Meta:
         model = ChatSession
@@ -271,7 +252,6 @@ class AnalysisDetailSerializer(serializers.ModelSerializer):
 
 
 class TriggerAnalysisSerializer(serializers.Serializer):
-    """Payload for POST /datasets/{id}/run_analysis/."""
     analysis_type = serializers.ChoiceField(choices=["eda", "ml"], default="eda")
     chat_session_id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -343,7 +323,6 @@ class ExportedReportSerializer(serializers.ModelSerializer):
 
 
 class TriggerExportSerializer(serializers.Serializer):
-    """Payload for POST /dashboards/{id}/export/."""
     format = serializers.ChoiceField(choices=["pdf", "ipynb", "py"])
 
 

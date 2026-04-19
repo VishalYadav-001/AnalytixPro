@@ -65,7 +65,6 @@ class ChatSession(models.Model):
         Dataset, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_sessions'
     )
 
-    # Answers gathered by the chatbot (Step 1–5 from the doc)
     analysis_type = models.CharField(
         max_length=20, choices=ANALYSIS_TYPE_CHOICES, null=True, blank=True
     )
@@ -76,7 +75,7 @@ class ChatSession(models.Model):
     )
     download_code = models.BooleanField(default=False)
 
-    is_complete = models.BooleanField(default=False)  # True when all 5 questions answered
+    is_complete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -84,9 +83,6 @@ class ChatSession(models.Model):
         return f"Session {self.id} — {self.user.username}"
 
 
-# ──────────────────────────────────────────────
-# Chat Message  (individual turns in a session)
-# ──────────────────────────────────────────────
 class ChatMessage(models.Model):
     ROLE_CHOICES = [
         ('user', 'User'),
@@ -105,9 +101,6 @@ class ChatMessage(models.Model):
         return f"[{self.role}] {self.content[:60]}"
 
 
-# ──────────────────────────────────────────────
-# Analysis  (EDA / ML results for a dataset)
-# ──────────────────────────────────────────────
 class Analysis(models.Model):
     ANALYSIS_TYPES = [
         ('eda', 'Exploratory Data Analysis'),
@@ -120,14 +113,12 @@ class Analysis(models.Model):
     )
     analysis_type = models.CharField(max_length=50, choices=ANALYSIS_TYPES)
 
-    # EDA outputs
     summary_statistics = models.JSONField(null=True, blank=True)
     missing_values = models.JSONField(null=True, blank=True)
     correlation_matrix = models.JSONField(null=True, blank=True)
     categorical_insights = models.JSONField(null=True, blank=True)
-    top_kpis = models.JSONField(null=True, blank=True)           # added per doc
+    top_kpis = models.JSONField(null=True, blank=True)    
 
-    # Cleaned dataset
     cleaned_file = models.FileField(upload_to='cleaned_datasets/', null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -137,9 +128,6 @@ class Analysis(models.Model):
         return f"{self.analysis_type} — {self.dataset.name}"
 
 
-# ──────────────────────────────────────────────
-# Dashboard
-# ──────────────────────────────────────────────
 class Dashboard(models.Model):
     LEVEL_CHOICES = [
         ('basic', 'Basic'),
@@ -150,7 +138,7 @@ class Dashboard(models.Model):
     analysis = models.OneToOneField(Analysis, on_delete=models.CASCADE, related_name='dashboard')
     title = models.CharField(max_length=255)
     level = models.CharField(max_length=10, choices=LEVEL_CHOICES, default='basic')
-    layout_config = models.JSONField()          # chart types, positions, axis config, etc.
+    layout_config = models.JSONField() 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -158,9 +146,6 @@ class Dashboard(models.Model):
         return self.title
 
 
-# ──────────────────────────────────────────────
-# Exported Report / Code
-# ──────────────────────────────────────────────
 class ExportedReport(models.Model):
     FORMAT_CHOICES = [
         ('pdf', 'PDF Report'),
