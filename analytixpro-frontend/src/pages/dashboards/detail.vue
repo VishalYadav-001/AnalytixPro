@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-50" v-if="dashboard">
 
-    <!-- ── Sticky Top Nav ───────────────────────────────────── -->
     <div class="sticky top-0 z-20 bg-white border-b border-slate-200 px-4 md:px-8 py-3.5
                 flex items-center justify-between gap-4">
       <div class="flex items-center gap-2.5 min-w-0">
@@ -17,8 +16,7 @@
         <h1 class="text-slate-900 font-bold text-sm truncate max-w-[180px] md:max-w-sm">
           {{ dashboard.title }}
         </h1>
-        <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-              :class="dashboard.level === 'advanced' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'">
+        <span class="badge shrink-0" :class="dashboard.level === 'advanced' ? 'badge-blue' : 'badge-gray'">
           {{ dashboard.level }}
         </span>
       </div>
@@ -56,20 +54,14 @@
       </div>
     </div>
 
-    <!-- ── Page Body ─────────────────────────────────────────── -->
     <div class="max-w-screen-xl mx-auto px-4 md:px-8 py-8 space-y-10">
 
-      <!-- Alerts -->
-      <div v-if="error" class="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
+      <div v-if="error" class="alert-error">
         <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         {{ error }}
       </div>
-      <div v-if="exportSuccess" class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm font-medium">
-        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        {{ exportSuccess }}
-      </div>
+      <div v-if="exportSuccess" class="alert-success">{{ exportSuccess }}</div>
 
-      <!-- Meta row -->
       <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 font-medium -mt-4">
         <span class="flex items-center gap-1.5">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/></svg>
@@ -81,7 +73,6 @@
         </span>
       </div>
 
-      <!-- ══ SECTION 1 — KPI Metric Cards (full width) ══ -->
       <section v-if="kpiList.length">
         <SectionLabel title="Key Metrics"  />
         <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -108,17 +99,14 @@
         </div>
       </section>
 
-      <!-- ══ SECTION 2 — Bar Chart + Pie Chart (2-col) ══ -->
       <section v-if="numColumns.length || catColumns.length">
         <SectionLabel title="Distribution Overview"  />
         <div class="mt-4 grid md:grid-cols-2 gap-6">
-          <!-- Bar chart: first numeric column -->
           <div v-if="numColumns.length" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <p class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-0.5">{{ numColumns[0] }}</p>
             <p class="text-[10px] text-slate-400 mb-5">Min / Mean / Median / Max / Std breakdown</p>
             <div class="h-60 relative"><canvas ref="overviewBarEl"/></div>
           </div>
-          <!-- Doughnut: first categorical column -->
           <div v-if="catColumns.length" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <p class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-0.5">{{ catColumns[0] }}</p>
             <p class="text-[10px] text-slate-400 mb-5">Top categories by frequency</p>
@@ -127,7 +115,6 @@
         </div>
       </section>
 
-      <!-- ══ SECTION 3 — Correlation Heatmap (full width) ══ -->
       <section>
         <SectionLabel title="Correlation Heatmap" />
         <div class="mt-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -159,7 +146,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Heatmap legend -->
             <div class="flex items-center justify-center gap-8 mt-6 text-[10px] font-medium text-slate-500">
               <div class="flex items-center gap-1.5">
                 <div class="w-10 h-3 rounded" style="background:rgba(239,68,68,0.8)"/>
@@ -181,7 +167,6 @@
         </div>
       </section>
 
-      <!-- ══ SECTION 4 — Missing Values + Summary Stats (2-col) ══ -->
       <section>
         <SectionLabel title="Data Quality & Summary" />
         <div class="mt-4 grid md:grid-cols-2 gap-6">
@@ -195,7 +180,6 @@
               <p class="text-xs text-slate-400">Your dataset is 100% complete.</p>
             </div>
           </div>
-          <!-- Summary stats mini table -->
           <div v-if="analysis?.summary_statistics" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
             <p class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">Summary Statistics</p>
             <div class="overflow-auto max-h-56">
@@ -224,7 +208,6 @@
         </div>
       </section>
 
-      <!-- ══ SECTION 5 — All Categorical Charts (3-col grid) ══ -->
       <section v-if="catColumns.length">
         <SectionLabel title="Categorical Distributions" />
         <div class="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -237,11 +220,10 @@
         </div>
       </section>
 
-      <!-- ══ SECTION 6 — All Numeric KPI Bar Charts (2-col grid) ══ -->
       <section v-if="numColumns.length">
         <SectionLabel title="Numeric Column Analysis" />
         <div class="mt-4 grid md:grid-cols-2 gap-5">
-          <div v-for="(col, i) in numColumns" :key="col"
+          <div v-for="col in numColumns" :key="col"
                class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <p class="text-xs font-bold text-slate-700 font-mono mb-0.5 truncate">{{ col }}</p>
             <p class="text-[10px] text-slate-400 mb-4">
@@ -296,7 +278,6 @@ import {
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, DoughnutController, ArcElement, Tooltip, Legend)
 
-// ── Inline section header component ──────────────────────────
 const SectionLabel = defineComponent({
   props: ["title", "icon"],
   setup(p) {
@@ -308,7 +289,6 @@ const SectionLabel = defineComponent({
   },
 })
 
-// ── Constants ─────────────────────────────────────────────────
 const PALETTE = [
   "#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444",
   "#06b6d4","#84cc16","#ec4899","#f97316","#14b8a6",
@@ -321,7 +301,6 @@ const EXPORT_OPTIONS = [
 ]
 const BASE_OPTS = { responsive: true, maintainAspectRatio: false, animation: { duration: 500 } }
 
-// ── State ──────────────────────────────────────────────────────
 const route         = useRoute()
 const dashboard     = ref(null)
 const analysis      = ref(null)
@@ -342,7 +321,6 @@ const charts         = []
 function setCatRef(col, el) { if (el) catRefs[col] = el }
 function setNumRef(col, el) { if (el) numRefs[col] = el }
 
-// ── Computed ───────────────────────────────────────────────────
 const kpiList = computed(() => {
   const k = analysis.value?.top_kpis
   return k ? Object.entries(k).map(([column, vals]) => ({ column, ...vals })) : []
@@ -372,7 +350,6 @@ const coreStatKeys = computed(() => {
   return found.length ? found : allKeys.slice(0, 5)
 })
 
-// ── Formatters ─────────────────────────────────────────────────
 function fmt(v) {
   if (v === null || v === undefined) return "—"
   const n = parseFloat(v)
@@ -410,7 +387,6 @@ function rangePercent(kpi) {
   return Math.round(Math.max(5, Math.min(95, ((kpi.mean ?? 0) - (kpi.min ?? 0)) / range * 100)))
 }
 
-// ── Chart builders ─────────────────────────────────────────────
 function destroyCharts() { charts.forEach(c => c.destroy()); charts.length = 0 }
 
 function buildMissingChart() {
@@ -529,7 +505,6 @@ async function buildAllCharts() {
   buildNumCharts()
 }
 
-// ── Load ───────────────────────────────────────────────────────
 async function load() {
   loading.value = true
   try {
@@ -544,7 +519,6 @@ async function load() {
   }
 }
 
-// ── Export ─────────────────────────────────────────────────────
 async function doExport(format) {
   exportOpen.value = false; error.value = ""; exportSuccess.value = ""
   exportLoading.value = format.toUpperCase()

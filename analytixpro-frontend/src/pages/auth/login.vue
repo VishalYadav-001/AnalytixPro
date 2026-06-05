@@ -1,18 +1,13 @@
 <template>
   <div class="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex min-h-[580px] animate-fade-up">
 
-    <!-- Left panel -->
     <AuthPanel />
 
-    <!-- Right: login form -->
     <div class="flex-1 flex flex-col justify-center px-8 py-10 md:px-12">
 
-      <!-- Tab switcher -->
       <div class="flex bg-slate-100 rounded-xl p-1 mb-8">
         <button class="tab-pill tab-pill-active" disabled>Sign In</button>
-        <RouterLink to="/auth/register" class="tab-pill tab-pill-inactive ml-1">
-          Create Account
-        </RouterLink>
+        <RouterLink to="/auth/register" class="tab-pill tab-pill-inactive ml-1">Create Account</RouterLink>
       </div>
 
       <div class="mb-7">
@@ -20,9 +15,8 @@
         <p class="text-brand-600 text-sm mt-1">Sign in to your AnalytixPro account.</p>
       </div>
 
-      <!-- Error / success alerts -->
-      <Transition name="alert">
-        <div v-if="errorMsg" class="alert-error mb-5 flex items-start gap-2">
+      <Transition name="slide">
+        <div v-if="errorMsg" class="alert-error mb-5">
           <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 mt-0.5 shrink-0 text-red-500" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
@@ -30,11 +24,10 @@
         </div>
       </Transition>
 
-      <Transition name="alert">
+      <Transition name="slide">
         <div v-if="successMsg" class="alert-success mb-5">{{ successMsg }}</div>
       </Transition>
 
-      <!-- Form -->
       <div class="space-y-4">
         <BaseInput
           id="login-username"
@@ -68,9 +61,9 @@
       </button>
 
       <div class="flex items-center gap-3 my-5">
-        <div class="flex-1 h-px bg-slate-200"/>
+        <div class="flex-1 h-px bg-slate-200" />
         <span class="text-slate-400 text-xs">or</span>
-        <div class="flex-1 h-px bg-slate-200"/>
+        <div class="flex-1 h-px bg-slate-200" />
       </div>
 
       <button class="btn-google" @click="googleLogin">
@@ -90,8 +83,8 @@
 import { reactive, ref } from "vue"
 import { RouterLink, useRouter } from "vue-router"
 import { useAuthStore } from "@/stores/auth"
-import AuthPanel from "@/components/AuthPanel.vue"
-import BaseInput from "@/components/BaseInput.vue"
+import AuthPanel from "@/components/auth/AuthPanel.vue"
+import BaseInput from "@/components/ui/BaseInput.vue"
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -109,7 +102,7 @@ function validate() {
 }
 
 async function submit() {
-  errorMsg.value = ""
+  errorMsg.value   = ""
   successMsg.value = ""
   if (!validate()) return
   loading.value = true
@@ -125,11 +118,13 @@ async function submit() {
   }
 }
 
-function googleLogin() { alert("Google OAuth not configured yet.") }
+function googleLogin() {
+  alert("Google OAuth not configured yet.")
+}
 </script>
 
 <style scoped>
-.alert-enter-active, .alert-leave-active { transition: all .25s ease; }
-.alert-enter-from { opacity: 0; transform: translateY(-6px); }
-.alert-leave-to   { opacity: 0; }
+.slide-enter-active, .slide-leave-active { transition: all 0.25s ease; }
+.slide-enter-from { opacity: 0; transform: translateY(-6px); }
+.slide-leave-to   { opacity: 0; }
 </style>

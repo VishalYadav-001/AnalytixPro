@@ -5,16 +5,14 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 })
 
-// ── Request interceptor: attach JWT ──────────────────────────
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token")
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// ── Response interceptor: auto-refresh on 401 ────────────────
 let isRefreshing = false
-let failedQueue = []
+let failedQueue  = []
 
 function processQueue(error, token = null) {
   failedQueue.forEach((prom) => {
@@ -29,14 +27,12 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
 
-    // Only attempt refresh on 401, and not on the refresh endpoint itself
     if (
       error.response?.status === 401 &&
       !original._retry &&
       !original.url?.includes("/auth/token/refresh/")
     ) {
       if (isRefreshing) {
-        // Queue the request until refresh completes
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
@@ -48,7 +44,7 @@ api.interceptors.response.use(
       }
 
       original._retry = true
-      isRefreshing = true
+      isRefreshing    = true
 
       const refresh = localStorage.getItem("refresh_token")
 
@@ -61,7 +57,6 @@ api.interceptors.response.use(
       }
 
       try {
-        // Use plain axios (not api instance) to avoid interceptor loop
         const { data } = await axios.post("/api/auth/token/refresh/", { refresh })
         const newAccess = data.access
 
@@ -87,7 +82,6 @@ api.interceptors.response.use(
   }
 )
 
-// ── Auth ─────────────────────────────────────────────────────
 export const authService = {
   register:       (data) => api.post("/auth/register/", data),
   login:          (data) => api.post("/auth/login/", data),
@@ -96,7 +90,6 @@ export const authService = {
   changePassword: (data) => api.post("/auth/me/change-password/", data),
 }
 
-// ── Datasets ─────────────────────────────────────────────────
 export const datasetService = {
   list:   ()        => api.get("/datasets/"),
   get:    (id)      => api.get(`/datasets/${id}/`),
@@ -104,15 +97,12 @@ export const datasetService = {
     const form = new FormData()
     form.append("file", payload.file)
     form.append("name", payload.name)
-    return api.post("/datasets/", form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    return api.post("/datasets/", form, { headers: { "Content-Type": "multipart/form-data" } })
   },
   delete:      (id)       => api.delete(`/datasets/${id}/`),
   runAnalysis: (id, data) => api.post(`/datasets/${id}/run-analysis/`, data),
 }
 
-// ── Chat ─────────────────────────────────────────────────────
 export const chatService = {
   list:        ()         => api.get("/chat-sessions/"),
   create:      (data)     => api.post("/chat-sessions/", data),
@@ -123,13 +113,11 @@ export const chatService = {
   messages:    (id)       => api.get(`/chat-sessions/${id}/messages/`),
 }
 
-// ── Analyses ─────────────────────────────────────────────────
 export const analysisService = {
   list: ()   => api.get("/analyses/"),
   get:  (id) => api.get(`/analyses/${id}/`),
 }
 
-// ── Dashboards ───────────────────────────────────────────────
 export const dashboardService = {
   list:     ()           => api.get("/dashboards/"),
   get:      (id)         => api.get(`/dashboards/${id}/`),
@@ -139,7 +127,6 @@ export const dashboardService = {
   exports:  (id)         => api.get(`/dashboards/${id}/exports/`),
 }
 
-// ── Exported Reports ─────────────────────────────────────────
 export const exportService = {
   list: ()   => api.get("/exports/"),
   get:  (id) => api.get(`/exports/${id}/`),

@@ -5,7 +5,6 @@
 
     <div class="flex-1 flex flex-col justify-center px-8 py-10 md:px-12 overflow-y-auto">
 
-      <!-- Tab switcher -->
       <div class="flex bg-slate-100 rounded-xl p-1 mb-8">
         <RouterLink to="/auth/login" class="tab-pill tab-pill-inactive">Sign In</RouterLink>
         <button class="tab-pill tab-pill-active ml-1" disabled>Create Account</button>
@@ -16,9 +15,8 @@
         <p class="text-brand-600 text-sm mt-1">Start analysing your data with AI in minutes.</p>
       </div>
 
-      <!-- Alerts -->
-      <Transition name="alert">
-        <div v-if="errorMsg" class="alert-error mb-5 flex items-start gap-2">
+      <Transition name="slide">
+        <div v-if="errorMsg" class="alert-error mb-5">
           <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 mt-0.5 shrink-0" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
@@ -26,11 +24,10 @@
         </div>
       </Transition>
 
-      <Transition name="alert">
+      <Transition name="slide">
         <div v-if="successMsg" class="alert-success mb-5">{{ successMsg }}</div>
       </Transition>
 
-      <!-- Form -->
       <div class="space-y-4">
         <div class="grid grid-cols-2 gap-3">
           <BaseInput
@@ -104,8 +101,8 @@
 import { reactive, ref } from "vue"
 import { RouterLink, useRouter } from "vue-router"
 import { useAuthStore } from "@/stores/auth"
-import AuthPanel from "@/components/AuthPanel.vue"
-import BaseInput from "@/components/BaseInput.vue"
+import AuthPanel from "@/components/auth/AuthPanel.vue"
+import BaseInput from "@/components/ui/BaseInput.vue"
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -124,18 +121,18 @@ const successMsg = ref("")
 
 function validate() {
   let ok = true
-  ;["first_name","last_name","username","email","password","password2"].forEach(k => errors[k] = "")
+  ;["first_name", "last_name", "username", "email", "password", "password2"].forEach(k => (errors[k] = ""))
   if (!form.first_name) { errors.first_name = "Required."; ok = false }
   if (!form.last_name)  { errors.last_name  = "Required."; ok = false }
   if (!form.username)   { errors.username   = "Required."; ok = false }
   if (!form.email || !form.email.includes("@")) { errors.email = "Valid email required."; ok = false }
-  if (form.password.length < 8) { errors.password = "Min. 8 characters."; ok = false }
-  if (form.password !== form.password2) { errors.password2 = "Passwords do not match."; ok = false }
+  if (form.password.length < 8)          { errors.password  = "Min. 8 characters.";        ok = false }
+  if (form.password !== form.password2)  { errors.password2 = "Passwords do not match.";   ok = false }
   return ok
 }
 
 async function submit() {
-  errorMsg.value = ""
+  errorMsg.value   = ""
   successMsg.value = ""
   if (!validate()) return
   loading.value = true
@@ -158,7 +155,7 @@ async function submit() {
 </script>
 
 <style scoped>
-.alert-enter-active, .alert-leave-active { transition: all .25s ease; }
-.alert-enter-from { opacity: 0; transform: translateY(-6px); }
-.alert-leave-to   { opacity: 0; }
+.slide-enter-active, .slide-leave-active { transition: all 0.25s ease; }
+.slide-enter-from { opacity: 0; transform: translateY(-6px); }
+.slide-leave-to   { opacity: 0; }
 </style>

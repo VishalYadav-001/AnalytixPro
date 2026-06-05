@@ -1,64 +1,23 @@
 <template>
   <div class="space-y-6 md:space-y-8 animate-fade-up px-1">
     <div>
-      <h1 class="page-title text-xl md:text-2xl font-bold">Welcome back, {{ displayName }}</h1>
-      <p class="page-subtitle text-sm text-slate-500">Here's a snapshot of your analytics workspace.</p>
+      <h1 class="page-title text-xl md:text-2xl">Welcome back, {{ displayName }}</h1>
+      <p class="page-subtitle">Here's a snapshot of your analytics workspace.</p>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-      <StatCard
-        label="Datasets"
-        :value="stats.datasets"
-        icon="database"
-        color="blue"
-        to="/datasets"
-      />
-      <StatCard
-        label="Analyses Run"
-        :value="stats.analyses"
-        icon="activity"
-        color="purple"
-      />
-      <StatCard
-        label="Dashboards"
-        :value="stats.dashboards"
-        icon="bar-chart"
-        color="green"
-        to="/dashboards"
-      />
-      <StatCard
-        label="Chat Sessions"
-        :value="stats.chats"
-        icon="message"
-        color="amber"
-        to="/chat"
-      />
+      <StatCard label="Datasets"      :value="stats.datasets"  icon="database"   color="blue"   to="/datasets" />
+      <StatCard label="Analyses Run"  :value="stats.analyses"  icon="activity"   color="purple" />
+      <StatCard label="Dashboards"    :value="stats.dashboards" icon="bar-chart" color="green"  to="/dashboards" />
+      <StatCard label="Chat Sessions" :value="stats.chats"     icon="message"    color="amber"  to="/chat" />
     </div>
 
     <div>
       <h2 class="font-display font-semibold text-lg text-slate-900 mb-4">Quick Actions</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <ActionCard
-          title="Upload Dataset"
-          desc="Import a CSV or Excel file to begin analysis."
-          icon="upload"
-          cta="Upload"
-          to="/datasets"
-        />
-        <ActionCard
-          title="Start AI Chat"
-          desc="Let the AI guide you through your data questions."
-          icon="bot"
-          cta="New Chat"
-          to="/chat"
-        />
-        <ActionCard
-          title="View Dashboards"
-          desc="Browse, export, and share your generated dashboards."
-          icon="layout"
-          cta="Browse"
-          to="/dashboards"
-        />
+        <ActionCard title="Upload Dataset"  desc="Import a CSV or Excel file to begin analysis."            icon="upload" cta="Upload" to="/datasets" />
+        <ActionCard title="Start AI Chat"   desc="Let the AI guide you through your data questions."        icon="bot"    cta="New Chat" to="/chat" />
+        <ActionCard title="View Dashboards" desc="Browse, export, and share your generated dashboards."     icon="layout" cta="Browse" to="/dashboards" />
       </div>
     </div>
 
@@ -67,26 +26,29 @@
         <h2 class="font-display font-semibold text-lg text-slate-900">Recent Datasets</h2>
         <RouterLink to="/datasets" class="text-sm text-brand-600 hover:underline font-medium">View all →</RouterLink>
       </div>
-      
+
       <div class="card overflow-hidden">
         <div class="overflow-x-auto w-full">
-          <table class="w-full text-sm whitespace-nowrap md:whitespace-normal">
-            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <table class="data-table whitespace-nowrap md:whitespace-normal">
+            <thead>
               <tr>
-                <th class="px-4 md:px-5 py-3 text-left">Name</th>
-                <th class="px-4 md:px-5 py-3 text-left">Type</th>
-                <th class="px-4 md:px-5 py-3 text-left">Rows</th>
-                <th class="px-4 md:px-5 py-3 text-left">Status</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Rows</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="ds in recentDatasets" :key="ds.id" class="hover:bg-slate-50 transition-colors cursor-pointer" @click="$router.push(`/datasets/${ds.id}`)">
-                <td class="px-4 md:px-5 py-3 font-medium text-slate-800 truncate max-w-[150px] md:max-w-none">{{ ds.name }}</td>
-                <td class="px-4 md:px-5 py-3 text-slate-500 uppercase text-xs">{{ ds.file_type }}</td>
-                <td class="px-4 md:px-5 py-3 text-slate-500">{{ ds.rows ?? "—" }}</td>
-                <td class="px-4 md:px-5 py-3">
-                  <StatusBadge :status="ds.status" />
-                </td>
+            <tbody>
+              <tr
+                v-for="ds in recentDatasets"
+                :key="ds.id"
+                class="cursor-pointer"
+                @click="$router.push(`/datasets/${ds.id}`)"
+              >
+                <td class="font-medium text-slate-800 truncate max-w-[150px] md:max-w-none">{{ ds.name }}</td>
+                <td class="text-slate-500 uppercase text-xs">{{ ds.file_type }}</td>
+                <td class="text-slate-500">{{ ds.rows ?? "—" }}</td>
+                <td><StatusBadge :status="ds.status" /></td>
               </tr>
             </tbody>
           </table>
@@ -111,7 +73,7 @@ const displayName = computed(() => {
   return u.first_name || u.username
 })
 
-const stats = ref({ datasets: "—", analyses: "—", dashboards: "—", chats: "—" })
+const stats          = ref({ datasets: "—", analyses: "—", dashboards: "—", chats: "—" })
 const recentDatasets = ref([])
 
 onMounted(async () => {
@@ -142,12 +104,11 @@ onMounted(async () => {
   } catch {}
 })
 
-// ── Sub-components ───────────────────────────────────────────
 const colorMap = {
-  blue:   { bg: "bg-blue-50",   icon: "text-blue-600",  label: "text-blue-700" },
-  purple: { bg: "bg-purple-50", icon: "text-purple-600", label: "text-purple-700" },
-  green:  { bg: "bg-emerald-50",icon: "text-emerald-600",label: "text-emerald-700" },
-  amber:  { bg: "bg-amber-50",  icon: "text-amber-600", label: "text-amber-700" },
+  blue:   { bg: "bg-blue-50",    icon: "text-blue-600",   label: "text-blue-700" },
+  purple: { bg: "bg-purple-50",  icon: "text-purple-600", label: "text-purple-700" },
+  green:  { bg: "bg-emerald-50", icon: "text-emerald-600",label: "text-emerald-700" },
+  amber:  { bg: "bg-amber-50",   icon: "text-amber-600",  label: "text-amber-700" },
 }
 
 const StatCard = {
@@ -155,26 +116,27 @@ const StatCard = {
   setup(props) {
     const c = colorMap[props.color] || colorMap.blue
     const icons = {
-      database:   `<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/>`,
-      activity:   `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`,
-      "bar-chart":`<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
-      message:    `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
+      database:    `<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/>`,
+      activity:    `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`,
+      "bar-chart": `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
+      message:     `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
     }
     return () => h(
       props.to ? RouterLink : "div",
-      props.to ? { to: props.to, class: "card p-4 md:p-5 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" }
-               : { class: "card p-4 md:p-5 flex items-center gap-4" },
+      props.to
+        ? { to: props.to, class: "card p-4 md:p-5 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" }
+        : { class: "card p-4 md:p-5 flex items-center gap-4" },
       [
         h("div", { class: `w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center shrink-0` }, [
-          h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", class: `w-5 h-5 ${c.icon}`, innerHTML: icons[props.icon] })
+          h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", class: `w-5 h-5 ${c.icon}`, innerHTML: icons[props.icon] }),
         ]),
         h("div", { class: "truncate" }, [
           h("p", { class: "text-xl md:text-2xl font-display font-bold text-slate-900" }, props.value),
           h("p", { class: "text-xs text-slate-500 mt-0.5 truncate" }, props.label),
-        ])
+        ]),
       ]
     )
-  }
+  },
 }
 
 const ActionCard = {
@@ -190,28 +152,23 @@ const ActionCard = {
       { class: "card p-5 md:p-6 flex flex-col gap-4 hover:shadow-md transition-shadow h-full" },
       [
         h("div", { class: "w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center" }, [
-          h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", class: "w-5 h-5 text-brand-600", innerHTML: icons[props.icon] })
+          h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", class: "w-5 h-5 text-brand-600", innerHTML: icons[props.icon] }),
         ]),
         h("div", {}, [
           h("h3", { class: "font-semibold text-slate-900 text-sm" }, props.title),
           h("p",  { class: "text-xs text-slate-500 mt-1 leading-relaxed" }, props.desc),
         ]),
-        h(RouterLink, { to: props.to, class: "btn-primary btn-sm self-start mt-auto" }, () => props.cta + " →")
+        h(RouterLink, { to: props.to, class: "btn-primary btn-sm self-start mt-auto" }, () => props.cta + " →"),
       ]
     )
-  }
+  },
 }
 
 const StatusBadge = {
   props: ["status"],
   setup(props) {
-    const cls = {
-      uploaded:   "badge-green",
-      processing: "badge-amber",
-      completed:  "badge-sky",
-      failed:     "badge-red",
-    }
+    const cls = { uploaded: "badge-green", processing: "badge-amber", completed: "badge-sky", failed: "badge-red" }
     return () => h("span", { class: `badge ${cls[props.status] ?? "badge-gray"}` }, props.status)
-  }
+  },
 }
 </script>

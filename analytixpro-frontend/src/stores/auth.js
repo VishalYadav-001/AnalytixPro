@@ -32,7 +32,6 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function register(payload) {
     const { data } = await authService.register(payload)
-    // Backend returns tokens on register
     if (data.tokens) {
       setTokens(data.tokens.access, data.tokens.refresh)
       await fetchMe()
@@ -53,7 +52,6 @@ export const useAuthStore = defineStore("auth", () => {
     clearAuth()
   }
 
-  // Hydrate on app boot if token exists
   if (accessToken.value && !user.value) {
     fetchMe()
   }
