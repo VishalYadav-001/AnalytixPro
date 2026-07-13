@@ -7,6 +7,7 @@ AI-powered automated data analytics platform.
 - Django REST Framework
 - PostgreSQL
 - JWT Authentication
+- Vue.js
 
 ## Setup Instructions
 1. Create virtual environment
