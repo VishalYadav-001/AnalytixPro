@@ -16,19 +16,19 @@ def _make_json_serializable(data):
         return {str(k): _make_json_serializable(v) for k, v in data.items()}
     elif isinstance(data, list):
         return [_make_json_serializable(i) for i in data]
-    
+
     elif isinstance(data, (datetime, pd.Timestamp)):
         return data.isoformat()
-    
+
     elif isinstance(data, (np.integer, np.int64)):
         return int(data)
-    
+
     elif isinstance(data, (np.floating, np.float64)):
         return float(data) if not np.isnan(data) else 0
-    
+
     elif pd.isna(data):
         return None
-    
+
     return data
 
 def parse_uploaded_file(dataset) -> None:
@@ -38,7 +38,7 @@ def parse_uploaded_file(dataset) -> None:
     """
     file = dataset.file
     file.seek(0)
-    raw = file.read()         
+    raw = file.read()
     ext = dataset.file.name.rsplit(".", 1)[-1].lower()
 
     try:
@@ -70,7 +70,7 @@ def parse_uploaded_file(dataset) -> None:
 
 def run_eda_analysis(dataset, analysis_type: str = "eda",
                      chat_session_id: int = None) -> Analysis:
- 
+
     dataset.status = "processing"
     dataset.save(update_fields=["status"])
 
@@ -133,13 +133,13 @@ def _clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop_duplicates()
     num_cols = df.select_dtypes(include="number").columns.tolist()
     cat_cols = df.select_dtypes(include="object").columns.tolist()
-    
+
     for col in num_cols:
         if df[col].isnull().all():
-            df[col] = df[col].fillna(0) 
+            df[col] = df[col].fillna(0)
         else:
             df[col] = df[col].fillna(df[col].median())
-            
+
     if cat_cols:
         mode = df[cat_cols].mode()
         fill = mode.iloc[0] if not mode.empty else "Unknown"
@@ -179,7 +179,7 @@ def _compute_top_kpis(df: pd.DataFrame) -> dict:
     num_df = df.select_dtypes(include="number")
     if num_df.empty:
         return {}
-    
+
     kpis = {}
     for col in num_df.columns:
         kpis[col] = {
@@ -191,38 +191,261 @@ def _compute_top_kpis(df: pd.DataFrame) -> dict:
         }
     return _make_json_serializable(kpis)
 
+
+# ── Domain-specific dashboard configurations ──────────────────────
+_DOMAIN_CONFIG = {
+    "sales": {
+        "label": "Sales Dashboard",
+        "color": "#3b82f6",
+        "sections": {
+            "kpi":         "Sales KPIs",
+            "overview":    "Revenue Overview",
+            "distribution": "Sales by Channel",
+            "correlation": "Revenue Correlations",
+            "quality":     "Data Completeness",
+            "categorical": "Category Breakdowns",
+            "numeric":     "Sales Metrics",
+        }
+    },
+    "hr": {
+        "label": "HR Analytics Dashboard",
+        "color": "#8b5cf6",
+        "sections": {
+            "kpi":         "Workforce KPIs",
+            "overview":    "Headcount Overview",
+            "distribution": "Department Distribution",
+            "correlation": "Performance Correlations",
+            "quality":     "Data Completeness",
+            "categorical": "Team Breakdowns",
+            "numeric":     "HR Metrics",
+        }
+    },
+    "financial": {
+        "label": "Financial Dashboard",
+        "color": "#10b981",
+        "sections": {
+            "kpi":         "Financial KPIs",
+            "overview":    "Revenue & Expenses",
+            "distribution": "Budget Allocation",
+            "correlation": "Financial Correlations",
+            "quality":     "Data Completeness",
+            "categorical": "Category Analysis",
+            "numeric":     "Financial Metrics",
+        }
+    },
+    "custom": {
+        "label": "Analytics Dashboard",
+        "color": "#f59e0b",
+        "sections": {
+            "kpi":         "Key Metrics",
+            "overview":    "Distribution Overview",
+            "distribution": "Top Categories",
+            "correlation": "Correlation Heatmap",
+            "quality":     "Data Quality",
+            "categorical": "Categorical Distributions",
+            "numeric":     "Numeric Analysis",
+        }
+    }
+}
+
+
 def generate_dashboard_config(analysis: Analysis) -> Dashboard:
     session = analysis.chat_session
     level = (session.dashboard_level if session else None) or "basic"
-    title = f"{analysis.dataset.name} — {analysis.get_analysis_type_display()} Dashboard"
+    analysis_type = (session.analysis_type if session else None) or "custom"
+    target_column = (session.target_column if session else None) or ""
+
+    domain = _DOMAIN_CONFIG.get(analysis_type, _DOMAIN_CONFIG["custom"])
+    title = f"{analysis.dataset.name} — {domain['label']}"
 
     charts = [
-        {"type": "summary_stats", "title": "Summary Statistics",  "data_key": "summary_statistics"},
-        {"type": "bar",           "title": "Missing Values",       "data_key": "missing_values"},
+        {"type": "kpi_cards",    "title": domain["sections"]["kpi"],       "data_key": "top_kpis",      "section": "kpi"},
+        {"type": "bar",          "title": domain["sections"]["overview"],   "data_key": "top_kpis",      "section": "overview"},
     ]
-
-    if analysis.correlation_matrix:
-        charts.append({"type": "heatmap", "title": "Correlation Heatmap",
-                        "data_key": "correlation_matrix"})
 
     if analysis.categorical_insights:
         for col in list(analysis.categorical_insights.keys())[:3]:
-            charts.append({"type": "pie", "title": f"{col} Distribution",
-                            "data_key": f"categorical_insights.{col}"})
+            charts.append({
+                "type": "pie",
+                "title": f"{col} Distribution",
+                "data_key": f"categorical_insights.{col}",
+                "section": "categorical"
+            })
+
+    if analysis.correlation_matrix:
+        charts.append({
+            "type": "heatmap",
+            "title": domain["sections"]["correlation"],
+            "data_key": "correlation_matrix",
+            "section": "correlation"
+        })
+
+    charts.append({
+        "type": "missing_bar",
+        "title": "Missing Values",
+        "data_key": "missing_values",
+        "section": "quality"
+    })
 
     if level == "advanced" and analysis.top_kpis:
-        charts.append({"type": "kpi_cards", "title": "Top KPIs", "data_key": "top_kpis"})
-        for col in list(analysis.top_kpis.keys())[:5]:
-            charts.append({"type": "histogram", "title": f"{col} Distribution",
-                            "data_key": f"top_kpis.{col}"})
+        for col in list(analysis.top_kpis.keys())[:6]:
+            charts.append({
+                "type": "histogram",
+                "title": f"{col} — Distribution",
+                "data_key": f"top_kpis.{col}",
+                "section": "numeric"
+            })
+
+    layout_config = {
+        "level": level,
+        "analysis_type": analysis_type,
+        "domain_label": domain["label"],
+        "domain_color": domain["color"],
+        "target_column": target_column,
+        "sections": domain["sections"],
+        "charts": charts,
+        "command_state": {
+            "hidden_sections": [],
+            "highlighted_columns": [target_column] if target_column and target_column != "__none__" else [],
+            "focus_type": None,
+        }
+    }
 
     return Dashboard.objects.create(
         dataset=analysis.dataset,
         analysis=analysis,
         title=title,
         level=level,
-        layout_config={"level": level, "charts": charts},
+        layout_config=layout_config,
     )
+
+
+def process_dashboard_command(dashboard: Dashboard, command: str):
+    """
+    Process a natural language command to update the dashboard layout.
+    Returns (response_message, updated_layout_config).
+    """
+    cmd = command.lower().strip()
+    config = {**dashboard.layout_config}
+
+    if "command_state" not in config:
+        config["command_state"] = {
+            "hidden_sections": [],
+            "highlighted_columns": [],
+            "focus_type": None,
+        }
+
+    state = config["command_state"]
+
+    # Hide / Remove
+    if any(w in cmd for w in ["hide", "remove"]):
+        if any(w in cmd for w in ["correlation", "heatmap"]):
+            if "correlation" not in state["hidden_sections"]:
+                state["hidden_sections"].append("correlation")
+            return " Correlation heatmap hidden. Type **show correlation** to restore it.", config
+
+        if any(w in cmd for w in ["missing", "quality", "completeness"]):
+            if "quality" not in state["hidden_sections"]:
+                state["hidden_sections"].append("quality")
+            return " Data quality section hidden.", config
+
+        if any(w in cmd for w in ["kpi", "metric card", "key metric", "cards"]):
+            if "kpi" not in state["hidden_sections"]:
+                state["hidden_sections"].append("kpi")
+            return " KPI cards hidden.", config
+
+        if any(w in cmd for w in ["distribution", "categorical", "category", "pie"]):
+            if "categorical" not in state["hidden_sections"]:
+                state["hidden_sections"].append("categorical")
+            return " Categorical distributions hidden.", config
+
+        if any(w in cmd for w in ["numeric", "bar chart", "column analysis", "overview"]):
+            if "numeric" not in state["hidden_sections"]:
+                state["hidden_sections"].append("numeric")
+            return " Numeric analysis section hidden.", config
+
+        return "I can hide: **correlation**, **quality**, **kpi cards**, **distributions**, or **numeric analysis**. Which section?", config
+
+    # Show / Add
+    if any(w in cmd for w in ["show", "add", "display", "reveal"]):
+        if any(w in cmd for w in ["all", "everything", "full", "reset"]):
+            state["hidden_sections"] = []
+            state["highlighted_columns"] = []
+            state["focus_type"] = None
+            return " Dashboard restored to full view — all sections visible.", config
+
+        if any(w in cmd for w in ["correlation", "heatmap"]):
+            if "correlation" in state["hidden_sections"]:
+                state["hidden_sections"].remove("correlation")
+            return " Correlation heatmap is now visible.", config
+
+        if any(w in cmd for w in ["missing", "quality"]):
+            if "quality" in state["hidden_sections"]:
+                state["hidden_sections"].remove("quality")
+            return " Data quality section is now visible.", config
+
+        if any(w in cmd for w in ["kpi", "metric", "cards"]):
+            if "kpi" in state["hidden_sections"]:
+                state["hidden_sections"].remove("kpi")
+            return " KPI cards are now visible.", config
+
+        if any(w in cmd for w in ["distribution", "categorical"]):
+            if "categorical" in state["hidden_sections"]:
+                state["hidden_sections"].remove("categorical")
+            return " Categorical distributions are now visible.", config
+
+        return "All sections are already visible. Try **hide correlation** or **focus on Revenue** to customize.", config
+
+    # Focus / Highlight
+    if any(w in cmd for w in ["focus", "highlight", "zoom", "spotlight"]):
+        skip = {"focus", "on", "highlight", "zoom", "into", "the", "a", "an", "spotlight"}
+        words = [w for w in cmd.split() if w not in skip and len(w) > 1]
+        if words:
+            state["highlighted_columns"] = [w.title() for w in words[:3]]
+            cols = ", ".join(state["highlighted_columns"])
+            return f" Highlighting: **{cols}**. These metrics are now featured prominently.", config
+        return "Please specify a column. Example: **focus on Revenue** or **highlight Sales**", config
+
+    # Simple / Minimal view
+    if any(w in cmd for w in ["simple", "minimal", "clean", "basic"]):
+        state["hidden_sections"] = ["correlation", "categorical", "quality"]
+        state["focus_type"] = "simple"
+        return " Switched to simplified view — KPIs and key charts only.", config
+
+    # Full / Advanced view
+    if any(w in cmd for w in ["full", "complete", "advanced", "detailed", "expand"]):
+        state["hidden_sections"] = []
+        state["focus_type"] = "advanced"
+        return " Switched to full view — all charts and analysis sections visible.", config
+
+    # Reset
+    if any(w in cmd for w in ["reset", "default", "original", "undo", "restore", "clear"]):
+        state["hidden_sections"] = []
+        state["highlighted_columns"] = []
+        state["focus_type"] = None
+        return " Dashboard reset to default view.", config
+
+    # Help
+    if any(w in cmd for w in ["help", "what", "commands", "how", "options"]):
+        return (
+            "Here's what I can do:\n\n"
+            "• **hide [section]** — Hide correlation, quality, kpi cards, distributions\n"
+            "• **show [section]** — Show a hidden section\n"
+            "• **show all** — Restore full dashboard\n"
+            "• **focus on [column]** — Highlight specific metrics\n"
+            "• **simple view** — Show only key metrics\n"
+            "• **full view** — Show all analytics\n"
+            "• **reset** — Restore defaults"
+        ), config
+
+    return (
+        "I didn't quite understand that. Try:\n"
+        "• **hide correlation** or **hide quality**\n"
+        "• **show all** or **reset**\n"
+        "• **focus on Revenue**\n"
+        "• **simple view** or **full view**\n"
+        "• **help** for all commands"
+    ), config
 
 
 def export_dashboard_report(dashboard: Dashboard, user, fmt: str) -> ExportedReport:
@@ -294,42 +517,98 @@ def _nb_markdown_cell(source):
     return {"cell_type": "markdown", "source": source, "metadata": {}}
 
 
-TARGET_COLUMN_NONE_SENTINEL = "__none__"  # Stored in DB when user says "none"
+TARGET_COLUMN_NONE_SENTINEL = "__none__"
+
+
+def _parse_analysis_type(raw: str):
+    v = raw.strip().lower().replace(" ", "_").replace("-", "_")
+    mapping = {
+        "sales": "sales", "sale": "sales", "revenue": "sales",
+        "ecommerce": "sales", "e_commerce": "sales", "shop": "sales",
+        "retail": "sales", "product": "sales", "orders": "sales",
+        "hr": "hr", "human_resources": "hr", "people": "hr",
+        "workforce": "hr", "employee": "hr", "employees": "hr",
+        "staffing": "hr", "personnel": "hr",
+        "financial": "financial", "finance": "financial",
+        "accounting": "financial", "budget": "financial",
+        "money": "financial", "fiscal": "financial", "economics": "financial",
+        "custom": "custom", "marketing": "custom", "market": "custom",
+        "operations": "custom", "ops": "custom",
+        "other": "custom", "general": "custom", "any": "custom",
+        "logistics": "custom", "supply": "custom", "inventory": "custom",
+    }
+    return mapping.get(v)
+
+
+def _parse_goal(raw: str):
+    v = raw.strip().lower().replace(" ", "_").replace("-", "_")
+    mapping = {
+        "find_trends": "find_trends", "trends": "find_trends",
+        "trend": "find_trends", "patterns": "find_trends",
+        "spot_trends": "find_trends", "time_trends": "find_trends",
+        "predict_outcomes": "predict_outcomes", "predict": "predict_outcomes",
+        "prediction": "predict_outcomes", "forecast": "predict_outcomes",
+        "forecasting": "predict_outcomes", "drivers": "predict_outcomes",
+        "correlations": "predict_outcomes", "relationships": "predict_outcomes",
+        "custom": "custom", "explore": "custom", "all": "custom",
+        "everything": "custom", "complete": "custom", "overview": "custom",
+        "general": "custom", "understand": "custom", "analyze": "custom",
+        "analyse": "custom",
+    }
+    return mapping.get(v)
+
+
+def _parse_dashboard_level(raw: str):
+    v = raw.strip().lower().replace(" ", "_")
+    if v in ("basic", "simple", "clean", "minimal", "overview", "quick", "standard"):
+        return "basic"
+    if v in ("advanced", "detailed", "full", "complete", "all", "deep", "comprehensive", "pro"):
+        return "advanced"
+    return None
+
 
 _CHAT_FLOW = [
-    ("analysis_type",   "What type of analysis are you looking for?\nOptions: **sales** / **hr** / **financial** / **custom**"),
-    ("goal",            "What is the goal of your data?\nOptions: **find_trends** / **predict_outcomes** / **custom**"),
-    ("target_column",   "What's your target column, if any? (e.g. Revenue — or type 'none')"),
-    ("dashboard_level", "How would you like the dashboard?\nOptions: **basic** / **advanced**"),
-    ("download_code",   "Would you like to download the generated Python code? (yes / no)"),
+    ("analysis_type",
+     "Welcome! I'm your Analytics Assistant — let's build your professional dashboard.\n\n"
+     "What type of data have you uploaded?\n\n"
+     "• **sales** — Sales, revenue, orders, products, e-commerce\n"
+     "• **hr** — People, workforce, departments, performance\n"
+     "• **financial** — Finance, budgets, P&L, accounting\n"
+     "• **custom** — Marketing, operations, or any other domain"),
+
+    ("goal",
+     "Great choice! What's your primary goal with this analysis?\n\n"
+     "• **find_trends** — Spot patterns and changes over time\n"
+     "• **predict_outcomes** — Understand key drivers and correlations\n"
+     "• **custom** — Explore all metrics for a complete overview"),
+
+    ("target_column",
+     "Which column is your **star metric** — the one KPI you care most about?\n\n"
+     "  Tip: Click any column name from the panel on the right, or type it here.\n"
+     "Type **none** if you want an equal focus on all metrics."),
+
+    ("dashboard_level",
+     "How comprehensive should your dashboard be?\n\n"
+     "• **basic** — Clean & focused: KPI cards, key charts, quick insights\n"
+     "• **advanced** — Full analytical suite: all metrics, correlations, deep distributions"),
+
+    ("download_code",
+     "Last step! Would you like to download the Python analysis code?\n\n"
+     "• **yes** — Get a Jupyter Notebook + Python script to run locally\n"
+     "• **no** — Dashboard only is perfect"),
 ]
 
 _FIELD_PARSERS = {
-    "analysis_type": lambda v: (
-        normalized := v.strip().lower().replace(" ", "_"),
-        normalized if normalized in ("sales", "hr", "financial", "custom") else None
-    )[-1],
-    
-    "goal": lambda v: (
-        normalized := v.strip().lower().replace(" ", "_"),
-        normalized if normalized in ("find_trends", "predict_outcomes", "custom") else None
-    )[-1],
-    
-    "target_column":   lambda v: TARGET_COLUMN_NONE_SENTINEL if v.strip().lower() == "none" else v.strip(),
-    "dashboard_level": lambda v: (
-        normalized := v.strip().lower().replace(" ", "_"),
-        normalized if normalized in ("basic", "advanced") else None
-    )[-1],
-    "download_code":   lambda v: v.strip().lower().startswith("y"),
+    "analysis_type":  _parse_analysis_type,
+    "goal":           _parse_goal,
+    "target_column":  lambda v: TARGET_COLUMN_NONE_SENTINEL if v.strip().lower() in ("none", "no", "n/a", "-", "skip", "all") else v.strip(),
+    "dashboard_level": _parse_dashboard_level,
+    "download_code":  lambda v: v.strip().lower()[:1] in ("y", "1", "t") if v.strip() else False,
 }
 
 
 def _is_field_answered(session, field):
-    """
-    Determines if a field has been explicitly answered — no extra DB columns needed.
-    """
     if field == "download_code":
-
         prior_fields = ["analysis_type", "goal", "target_column", "dashboard_level"]
         return all(_is_field_answered(session, f) for f in prior_fields) and (
             session.is_complete or getattr(session, "_download_code_set", False)
@@ -360,7 +639,7 @@ def handle_chat_turn(session: ChatSession, user_content: str):
 
         if current_field == "download_code":
             session.download_code = parsed
-            session._download_code_set = True  
+            session._download_code_set = True
             session.save(update_fields=["download_code"])
 
         elif parsed is not None:
@@ -370,7 +649,7 @@ def handle_chat_turn(session: ChatSession, user_content: str):
         else:
             for field, question in _CHAT_FLOW:
                 if field == current_field:
-                    return f"⚠️ That doesn't look right. Please choose one of the options:\n\n{question}", session
+                    return f" I didn't recognise that answer. Please try again:\n\n{question}", session
 
     next_question = None
     for field, question in _CHAT_FLOW:
@@ -385,19 +664,19 @@ def handle_chat_turn(session: ChatSession, user_content: str):
     session.save(update_fields=["is_complete"])
 
     display_target = (
-        "None" 
-        if session.target_column == TARGET_COLUMN_NONE_SENTINEL 
+        "All metrics (equal focus)"
+        if session.target_column == TARGET_COLUMN_NONE_SENTINEL
         else (session.target_column or "None")
     )
 
     reply = (
-        "✅ Great! I have everything I need.\n\n"
-        "Here's a summary of your setup:\n"
-        f"• Analysis type: {session.analysis_type}\n"
-        f"• Goal: {session.goal}\n"
-        f"• Target column: {display_target}\n"
-        f"• Dashboard level: {session.dashboard_level}\n"
-        f"• Download code: {'Yes' if session.download_code else 'No'}\n\n"
-        "Head to **Datasets** and click **Analyse** to generate your dashboard!"
+        " Perfect! I have everything I need to build your dashboard.\n\n"
+        "**Dashboard Configuration:**\n"
+        f"• Domain: {session.analysis_type.title() if session.analysis_type else '—'}\n"
+        f"• Goal: {(session.goal or '').replace('_', ' ').title()}\n"
+        f"• Primary Metric: {display_target}\n"
+        f"• Detail Level: {(session.dashboard_level or '').title()}\n"
+        f"• Export Code: {'Yes' if session.download_code else 'No'}\n\n"
+        " Building your dashboard now..."
     )
     return reply, session

@@ -31,11 +31,12 @@ from .serializers import (
     ExportedReportSerializer, TriggerExportSerializer,
 )
 from .services.services import (
-    parse_uploaded_file,       # extracts rows/cols/column_names from CSV/Excel
-    run_eda_analysis,          # runs pandas EDA, returns Analysis instance
-    generate_dashboard_config, # builds layout_config JSON for Dashboard
-    export_dashboard_report,   # generates PDF/ipynb/py file, returns ExportedReport
-    handle_chat_turn,          # processes user message, returns assistant reply + updated session
+    parse_uploaded_file,          # extracts rows/cols/column_names from CSV/Excel
+    run_eda_analysis,             # runs pandas EDA, returns Analysis instance
+    generate_dashboard_config,    # builds layout_config JSON for Dashboard
+    export_dashboard_report,      # generates PDF/ipynb/py file, returns ExportedReport
+    handle_chat_turn,             # processes user message, returns assistant reply + updated session
+    process_dashboard_command,    # handles natural language dashboard update commands
 )
 
 logger = logging.getLogger(__name__)
@@ -345,6 +346,34 @@ class DashboardViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], url_path="update-command")
+    def update_command(self, request, pk=None):
+        """Process a natural language command to update the dashboard layout."""
+        dashboard = self.get_object()
+
+        command = request.data.get("command", "").strip()
+        if not command:
+            return Response(
+                {"detail": "command is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            message, new_config = process_dashboard_command(dashboard, command)
+            dashboard.layout_config = new_config
+            dashboard.save(update_fields=["layout_config", "updated_at"])
+        except Exception as exc:
+            logger.exception("Dashboard command failed for dashboard %s", dashboard.id)
+            return Response(
+                {"detail": "Command processing failed.", "error": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response({
+            "message": message,
+            "layout_config": new_config,
+        })
 
     @action(detail=False, methods=["post"], url_path="generate")
     def generate(self, request):
