@@ -1,26 +1,66 @@
-# Virtual Environment
-venv/
-.venv/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-
-# Django
-db.sqlite3
-/media/
-/staticfiles/
-/excel_conversions/
-/pdf_uploads/
-
-# Environment Variables
-.env
-!.env.example
-
-# VS Code
-.vscode/
-
+# =========================
 # OS
+# =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Archives
+# =========================
+*.zip
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+backend/venv/
+venv/
+
+# Django
+*.sqlite3
+*.sqlite3-journal
+
+# Environment variables
+.env
+*.env
+!.env.example
+
+# Django generated/static files
+backend/staticfiles/
+backend/static/
+
+# =========================
+# User uploaded/generated files
+# =========================
+backend/media/
+
+# =========================
+# Node
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Build / cache
+# =========================
+*.log
+.cache/
+
+# Claude / local AI tooling
+.claude/
