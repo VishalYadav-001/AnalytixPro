@@ -68,6 +68,17 @@ def parse_uploaded_file(dataset) -> None:
         raise
 
 
+def date_set_details(date_set):
+    try:
+        return {
+            "min": date_set.min().isoformat(),
+            "max": date_set.max().isoformat(),
+            "count": len(date_set),
+        }
+    except Exception as exc:
+        logger.error("date_set_details error: %s", exc)
+        raise
+
 def run_eda_analysis(dataset, analysis_type: str = "eda",
                      chat_session_id: int = None) -> Analysis:
 

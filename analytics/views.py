@@ -31,7 +31,8 @@ from .serializers import (
     ExportedReportSerializer, TriggerExportSerializer,
 )
 from .services.services import (
-    parse_uploaded_file,          # extracts rows/cols/column_names from CSV/Excel
+    parse_uploaded_file,   
+    date_set_details,       # extracts rows/cols/column_names from CSV/Excel
     run_eda_analysis,             # runs pandas EDA, returns Analysis instance
     generate_dashboard_config,    # builds layout_config JSON for Dashboard
     export_dashboard_report,      # generates PDF/ipynb/py file, returns ExportedReport
@@ -131,6 +132,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
         # Parse file metadata in the same request (fast op — just read headers)
         try:
             parse_uploaded_file(dataset)
+            date_set_details(dataset)
         except Exception as exc:
             logger.error("File parsing failed for dataset %s: %s", dataset.id, exc)
             dataset.status = "failed"
@@ -295,7 +297,7 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(ChatMessageSerializer(page, many=True).data)
         return Response(ChatMessageSerializer(msgs, many=True).data)
-
+    
 
 
 class AnalysisViewSet(viewsets.ModelViewSet):
